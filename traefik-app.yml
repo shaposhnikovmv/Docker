@@ -1,0 +1,62 @@
+version: '3.8'
+services:
+  traefik:
+    image: traefik:v2.5  
+    command: 
+      - "--log.level=INFO"
+      - "--api.insecure=true" 
+      - "--providers.docker=true"
+      - "--providers.docker.swarmMode=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      # So that Traefik can listen to the Docker events
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+  pip-app:
+    image: shaposhnikovmv/pip-app:1
+    deploy:
+      mode: replicated
+      replicas: 2
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.pip-app.rule=Host(`pip-app.lab.loc`)"
+        - "traefik.http.services.pip-app.loadbalancer.server.port=5000"
+        - "traefik.http.routers.pip-app.entrypoints=web"
+        - "traefik.http.routers.pip-app.service=pip-app"
+  whoami:
+    image: containous/whoami
+    deploy:
+      mode: replicated
+      replicas: 2
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.whoami.rule=Host(`whoami.lab.loc`)"
+        - "traefik.http.services.whoami.loadbalancer.server.port=80"
+        - "traefik.http.routers.whoami.entrypoints=web"
+        - "traefik.http.routers.whoami.service=whoami"
+  nginx:
+    image: nginx:latest
+    deploy:
+      mode: replicated
+      replicas: 2
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.nginx.rule=Host(`nginx.lab.loc`)"
+        - "traefik.http.services.nginx.loadbalancer.server.port=80"
+        - "traefik.http.routers.nginx.entrypoints=web"
+        - "traefik.http.routers.nginx.service=nginx"     
+  apache:
+    image: httpd:latest
+    deploy:
+      mode: replicated
+      replicas: 2
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.httpd.rule=Host(`httpd.lab.loc`)"
+        - "traefik.http.services.httpd.loadbalancer.server.port=80"
+        - "traefik.http.routers.httpd.entrypoints=web"
+        - "traefik.http.routers.httpd.service=httpd"
+    
